@@ -1,4 +1,4 @@
-name: TurboWarp Full Package & Release (Electron Fullscreen)
+name: TurboWarp Full Package & Release
 
 on:
   workflow_dispatch:
@@ -8,8 +8,9 @@ on:
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
+
     steps:
-      # 1️⃣ Checkout repo
+      # 1️⃣ Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -19,29 +20,49 @@ jobs:
         with:
           node-version: 22
 
-      # 3️⃣ Install dependencies
-      - name: Install dependencies
+      # 3️⃣ Install dependencies (optional)
+      - name: Install repo dependencies
         run: npm install || echo "No dependencies"
 
-      # 4️⃣ Download TurboWarp Packager
-      - name: Download TurboWarp packager
+      # 4️⃣ Clone TurboWarp packager
+      - name: Clone TurboWarp packager
         run: |
-          curl -L https://raw.githubusercontent.com/TurboWarp/packager/refs/heads/master/src/packager/packager.js -o packager.js
+          git clone https://github.com/TurboWarp/packager.git turbopackager
+          cd turbopackager
+          npm install
 
-      # 5️⃣ Package the project for all targets
+      # 5️⃣ Package project for all targets
       - name: Package project
         run: |
           mkdir -p dist
           # Windows Electron fullscreen
-          node packager.js --project https://turbowarp.org/1201075844 --target windows --fps 60 --interpolation true --electron true --fullscreen true --out dist
-          # macOS Electron fullscreen
-          node packager.js --project https://turbowarp.org/1201075844 --target mac --fps 60 --interpolation true --electron true --fullscreen true --out dist
+          node turbopackager/src/packager/packager.js \
+            --project https://turbowarp.org/1201075844 \
+            --target windows --fps 60 --interpolation true --electron true --fullscreen true --out dist
+          # macOS plain .app
+          node turbopackager/src/packager/packager.js \
+            --project https://turbowarp.org/1201075844 \
+            --target mac --fps 60 --interpolation true --out dist
           # Linux Electron fullscreen
-          node packager.js --project https://turbowarp.org/1201075844 --target linux --fps 60 --interpolation true --electron true --fullscreen true --out dist
-          # HTML build (plain web)
-          node packager.js --project https://turbowarp.org/1201075844 --target html --fps 60 --interpolation true --out dist
+          node turbopackager/src/packager/packager.js \
+            --project https://turbowarp.org/1201075844 \
+            --target linux --fps 60 --interpolation true --electron true --fullscreen true --out dist
+          # HTML build
+          node turbopackager/src/packager/packager.js \
+            --project https://turbowarp.org/1201075844 \
+            --target html --fps 60 --interpolation true --out dist
 
-      # 6️⃣ Commit HTML build to repo as online.html
+      # 6️⃣ Rename desktop ZIPs for clarity
+      - name: Rename desktop builds
+        run: |
+          # Windows
+          mv dist/*.exe.zip dist/GLUE3D-Windows.zip || echo "Windows ZIP not found"
+          # macOS
+          mv dist/*.app.zip dist/GLUE3D-macOS.zip || echo "macOS ZIP not found"
+          # Linux
+          mv dist/*linux.zip dist/GLUE3D-Linux.zip || echo "Linux ZIP not found"
+
+      # 7️⃣ Commit HTML build as online.html
       - name: Commit HTML build
         run: |
           cp dist/index.html online.html
@@ -51,8 +72,8 @@ jobs:
           git commit -m "Update online.html from TurboWarp build" || echo "No changes to commit"
           git push
 
-      # 7️⃣ Create GitHub release with date/time tag
-      - name: Create Release
+      # 8️⃣ Create GitHub release with timestamp tag
+      - name: Create GitHub Release
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
@@ -61,7 +82,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 8️⃣ Upload all packaged builds to release
+      # 9️⃣ Upload all builds to release
       - name: Upload release assets
         uses: softprops/action-gh-release@v1
         with:
