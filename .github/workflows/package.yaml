@@ -33,22 +33,11 @@ jobs:
         run: |
           cat > package-project.mjs << 'EOF'
           import { writeFileSync } from 'fs';
-          const pkg = await import('./turbopackager/dist/packager.js');
-          
-          // pkg.packager is the named export we saw earlier
-          const packager_module = pkg.packager;
-          console.log('packager module type:', typeof packager_module);
-          console.log('packager module keys:', Object.keys(packager_module));
-          
-          const Packager = packager_module.Packager ?? packager_module.default ?? packager_module;
-          const p = new Packager();
-          
-          // Look for downloadProject or similar
-          console.log('All Packager static:', Object.getOwnPropertyNames(Packager));
-          console.log('project value:', p.project);
-          
-          // Check if there's a separate downloader export
-          console.log('All pkg exports:', Object.keys(pkg).map(k => `${k}: ${typeof pkg[k]}`));
+
+          // Read the source to find project-related code
+          import { readFileSync } from 'fs';
+          const src = readFileSync('./turbopackager/src/packager/node/export.js', 'utf8');
+          console.log('export.js:', src);
           EOF
 
       - name: Run debug
