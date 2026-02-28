@@ -3,10 +3,10 @@ name: TurboWarp Package & Release
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * 0'
+    - cron: '0 0 * * 0' # weekly Sunday UTC
 
 permissions:
-  contents: write  # ← REQUIRED for creating releases
+  contents: write
 
 jobs:
   build-and-release:
@@ -28,16 +28,13 @@ jobs:
           git clone https://github.com/TurboWarp/packager.git turbopackager
           cd turbopackager
           npm install
-          npm run build-node-prod  # builds the Node.js API module
+          npm run build-node-prod
 
       - name: Write packaging script
         run: |
           cat > package-project.mjs << 'EOF'
-          import { readFileSync, writeFileSync } from 'fs';
-          import path from 'path';
-
-          // Dynamically import the built packager node module
-          const { default: Packager } = await import('./turbopackager/node-api-docs/index.js');
+          import { writeFileSync } from 'fs';
+          const { default: Packager } = await import('./turbopackager/dist/packager.js');
 
           const PROJECT_URL = 'https://turbowarp.org/1201075844';
           const targets = [
