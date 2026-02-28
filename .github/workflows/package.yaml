@@ -3,7 +3,10 @@ name: TurboWarp Package & Release
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * 0' # weekly Sunday UTC
+    - cron: '0 0 * * 0'
+
+permissions:
+  contents: write  # ← REQUIRED for creating releases
 
 jobs:
   build-and-release:
@@ -25,40 +28,45 @@ jobs:
           git clone https://github.com/TurboWarp/packager.git turbopackager
           cd turbopackager
           npm install
-      
-      - name: Package Windows (Electron fullscreen)
-        run: |
-          cd turbopackager
-          node src/packager/node.js \
-            --project https://turbowarp.org/1201075844 \
-            --target windows --fps 60 --interpolation true --electron true --fullscreen true --out ../dist
-      
-      - name: Package macOS (.app)
-        run: |
-          cd turbopackager
-          node src/packager/node.js \
-            --project https://turbowarp.org/1201075844 \
-            --target mac --fps 60 --interpolation true --out ../dist
-      
-      - name: Package Linux (Electron fullscreen)
-        run: |
-          cd turbopackager
-          node src/packager/node.js \
-            --project https://turbowarp.org/1201075844 \
-            --target linux --fps 60 --interpolation true --electron true --fullscreen true --out ../dist
-      
-      - name: Package HTML
-        run: |
-          cd turbopackager
-          node src/packager/node.js \
-            --project https://turbowarp.org/1201075844 \
-            --target html --fps 60 --interpolation true --out ../dist
+          npm run build-node-prod  # builds the Node.js API module
 
-      - name: Move HTML to online.html
-        run: mv dist/index.html online.html
+      - name: Write packaging script
+        run: |
+          cat > package-project.mjs << 'EOF'
+          import { readFileSync, writeFileSync } from 'fs';
+          import path from 'path';
+
+          // Dynamically import the built packager node module
+          const { default: Packager } = await import('./turbopackager/node-api-docs/index.js');
+
+          const PROJECT_URL = 'https://turbowarp.org/1201075844';
+          const targets = [
+            { type: 'windows', options: { target: 'windows', fps: 60, interpolation: true, electron: true, fullscreen: true } },
+            { type: 'mac',     options: { target: 'mac',     fps: 60, interpolation: true } },
+            { type: 'linux',   options: { target: 'linux',   fps: 60, interpolation: true, electron: true, fullscreen: true } },
+            { type: 'html',    options: { target: 'html',    fps: 60, interpolation: true } },
+          ];
+
+          for (const { type, options } of targets) {
+            console.log(`Packaging for ${type}...`);
+            const packager = new Packager();
+            packager.project.url = PROJECT_URL;
+            Object.assign(packager.options, options);
+            const result = await packager.package();
+            const ext = type === 'html' ? 'html' : 'zip';
+            const outPath = `dist/${type}.${ext}`;
+            writeFileSync(outPath, Buffer.from(result.data));
+            console.log(`Saved ${outPath}`);
+          }
+          EOF
+
+      - name: Package all targets
+        run: node package-project.mjs
+
+      - name: Rename HTML output
+        run: mv dist/html.html online.html
 
       - name: Create Release
-        id: gh_release
         uses: softprops/action-gh-release@v1
         with:
           files: |
