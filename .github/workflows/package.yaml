@@ -53,8 +53,11 @@ jobs:
       - name: Package all targets
         run: node package-project.mjs
 
+      - name: List dist contents
+        run: ls -la dist/
+
       - name: Rename HTML output
-        run: mv dist/html.html online.html
+        run: mv dist/*.html online.html
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
