@@ -3,61 +3,57 @@ name: TurboWarp Package & Release
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * 0' # weekly on Sunday at 00:00 UTC
+    - cron: '0 0 * * 0' # weekly Sunday UTC
 
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
     steps:
-      # 1. Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 22
 
-      # 3. Create dist folder
       - name: Create dist folder
         run: mkdir -p dist
 
-      # 4. Clone TurboWarp Packager and install deps
       - name: Clone TurboWarp Packager
         run: |
           git clone https://github.com/TurboWarp/packager.git turbopackager
           cd turbopackager
           npm install
 
-      # 5. Package all targets
-      - name: Package project
+      - name: Package Windows (Electron fullscreen)
         run: |
-          cd turbopackager
-          # Windows Electron fullscreen
-          node . \
+          node turbopackager/src/packager/packager.js \
             --project https://turbowarp.org/1201075844 \
-            --target windows --fps 60 --interpolation true --electron true --fullscreen true --out ../dist
-          # macOS app (plain, not Electron)
-          node . \
-            --project https://turbowarp.org/1201075844 \
-            --target mac --fps 60 --interpolation true --out ../dist
-          # Linux Electron fullscreen
-          node . \
-            --project https://turbowarp.org/1201075844 \
-            --target linux --fps 60 --interpolation true --electron true --fullscreen true --out ../dist
-          # HTML
-          node . \
-            --project https://turbowarp.org/1201075844 \
-            --target html --fps 60 --interpolation true --out ../dist
-          cd ..
+            --target windows --fps 60 --interpolation true --electron true --fullscreen true --out dist
 
-      # 6. Move HTML to online.html in repo root
+      - name: Package macOS (.app)
+        run: |
+          node turbopackager/src/packager/packager.js \
+            --project https://turbowarp.org/1201075844 \
+            --target mac --fps 60 --interpolation true --out dist
+
+      - name: Package Linux (Electron fullscreen)
+        run: |
+          node turbopackager/src/packager/packager.js \
+            --project https://turbowarp.org/1201075844 \
+            --target linux --fps 60 --interpolation true --electron true --fullscreen true --out dist
+
+      - name: Package HTML
+        run: |
+          node turbopackager/src/packager/packager.js \
+            --project https://turbowarp.org/1201075844 \
+            --target html --fps 60 --interpolation true --out dist
+
       - name: Move HTML to online.html
         run: mv dist/index.html online.html
 
-      # 7. Create release with timestamp
-      - name: Create GitHub Release
+      - name: Create Release
         id: gh_release
         uses: softprops/action-gh-release@v1
         with:
@@ -66,14 +62,5 @@ jobs:
             online.html
           tag_name: ${{ github.run_id }}-${{ github.run_number }}
           release_name: Download
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # 8. Optional: Upload HTML separately as release asset
-      - name: Upload online.html to release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: online.html
-          tag_name: ${{ github.run_id }}-${{ github.run_number }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
