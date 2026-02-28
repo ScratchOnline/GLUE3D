@@ -29,27 +29,31 @@ jobs:
           cd turbopackager
           npm install
           npm run build-node-prod
-
       - name: Write packaging script
         run: |
           cat > package-project.mjs << 'EOF'
           import { writeFileSync } from 'fs';
           const pkg = await import('./turbopackager/dist/packager.js');
-          const Packager = pkg.default?.Packager ?? pkg.Packager ?? pkg.default;
-          console.log('pkg.packager:', pkg.packager);
-          console.log('pkg keys:', Object.keys(pkg));
-
-          const packager = new Packager();
-          console.log('project type:', typeof packager.project);
-          console.log('project constructor:', packager.project?.constructor?.name);
-
-          // Try to find a Project class or factory
-          const allExports = Object.keys(pkg);
-          for (const key of allExports) {
-            console.log(`pkg.${key}:`, pkg[key]);
-          }
+          
+          // pkg.packager is the named export we saw earlier
+          const packager_module = pkg.packager;
+          console.log('packager module type:', typeof packager_module);
+          console.log('packager module keys:', Object.keys(packager_module));
+          
+          const Packager = packager_module.Packager ?? packager_module.default ?? packager_module;
+          const p = new Packager();
+          
+          // Look for downloadProject or similar
+          console.log('All Packager static:', Object.getOwnPropertyNames(Packager));
+          console.log('project value:', p.project);
+          
+          // Check if there's a separate downloader export
+          console.log('All pkg exports:', Object.keys(pkg).map(k => `${k}: ${typeof pkg[k]}`));
           EOF
 
+      - name: Run debug
+        run: node package-project.mjs
+  
       - name: Package all targets
         run: node package-project.mjs
 
