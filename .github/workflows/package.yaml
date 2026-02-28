@@ -54,7 +54,7 @@ jobs:
         run: node package-project.mjs
 
       - name: List dist contents
-        run: ls -la dist/
+        run: ls -la dist/ || echo "dist is empty or missing"
 
       - name: Rename HTML output
         run: mv dist/*.html online.html
