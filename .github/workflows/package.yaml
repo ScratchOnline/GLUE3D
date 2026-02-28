@@ -1,91 +1,79 @@
-name: TurboWarp Full Package & Release
+name: TurboWarp Package & Release
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * 0' # weekly (Sunday UTC)
+    - cron: '0 0 * * 0' # weekly on Sunday at 00:00 UTC
 
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
-
     steps:
-      # 1️⃣ Checkout repository
+      # 1. Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Setup Node.js
+      # 2. Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 22
 
-      # 3️⃣ Install dependencies (optional)
-      - name: Install repo dependencies
-        run: npm install || echo "No dependencies"
+      # 3. Create dist folder
+      - name: Create dist folder
+        run: mkdir -p dist
 
-      # 4️⃣ Clone TurboWarp packager
-      - name: Clone TurboWarp packager
+      # 4. Clone TurboWarp Packager and install deps
+      - name: Clone TurboWarp Packager
         run: |
           git clone https://github.com/TurboWarp/packager.git turbopackager
           cd turbopackager
           npm install
 
-      # 5️⃣ Package project for all targets
+      # 5. Package all targets
       - name: Package project
         run: |
-          mkdir -p dist
+          cd turbopackager
           # Windows Electron fullscreen
-          node turbopackager/src/packager/packager.js \
+          node . \
             --project https://turbowarp.org/1201075844 \
-            --target windows --fps 60 --interpolation true --electron true --fullscreen true --out dist
-          # macOS plain .app
-          node turbopackager/src/packager/packager.js \
+            --target windows --fps 60 --interpolation true --electron true --fullscreen true --out ../dist
+          # macOS app (plain, not Electron)
+          node . \
             --project https://turbowarp.org/1201075844 \
-            --target mac --fps 60 --interpolation true --out dist
+            --target mac --fps 60 --interpolation true --out ../dist
           # Linux Electron fullscreen
-          node turbopackager/src/packager/packager.js \
+          node . \
             --project https://turbowarp.org/1201075844 \
-            --target linux --fps 60 --interpolation true --electron true --fullscreen true --out dist
-          # HTML build
-          node turbopackager/src/packager/packager.js \
+            --target linux --fps 60 --interpolation true --electron true --fullscreen true --out ../dist
+          # HTML
+          node . \
             --project https://turbowarp.org/1201075844 \
-            --target html --fps 60 --interpolation true --out dist
+            --target html --fps 60 --interpolation true --out ../dist
+          cd ..
 
-      # 6️⃣ Rename desktop ZIPs for clarity
-      - name: Rename desktop builds
-        run: |
-          # Windows
-          mv dist/*.exe.zip dist/GLUE3D-Windows.zip || echo "Windows ZIP not found"
-          # macOS
-          mv dist/*.app.zip dist/GLUE3D-macOS.zip || echo "macOS ZIP not found"
-          # Linux
-          mv dist/*linux.zip dist/GLUE3D-Linux.zip || echo "Linux ZIP not found"
+      # 6. Move HTML to online.html in repo root
+      - name: Move HTML to online.html
+        run: mv dist/index.html online.html
 
-      # 7️⃣ Commit HTML build as online.html
-      - name: Commit HTML build
-        run: |
-          cp dist/index.html online.html
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
-          git add online.html
-          git commit -m "Update online.html from TurboWarp build" || echo "No changes to commit"
-          git push
-
-      # 8️⃣ Create GitHub release with timestamp tag
+      # 7. Create release with timestamp
       - name: Create GitHub Release
-        id: create_release
+        id: gh_release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: "build-$(date +'%Y%m%d-%H%M%S')"
-          name: "Download"
+          files: |
+            dist/*.zip
+            online.html
+          tag_name: ${{ github.run_id }}-${{ github.run_number }}
+          release_name: Download
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 9️⃣ Upload all builds to release
-      - name: Upload release assets
+      # 8. Optional: Upload HTML separately as release asset
+      - name: Upload online.html to release
         uses: softprops/action-gh-release@v1
         with:
-          files: "dist/**"
+          files: online.html
+          tag_name: ${{ github.run_id }}-${{ github.run_number }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
