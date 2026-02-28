@@ -29,28 +29,45 @@ jobs:
           cd turbopackager
           npm install
           npm run build-node-prod
+
       - name: Write packaging script
         run: |
           cat > package-project.mjs << 'EOF'
           import { writeFileSync } from 'fs';
+          const pkg = await import('./turbopackager/dist/packager.js');
+          const Packager = pkg.default.Packager;
+          const loadProject = pkg.default.loadProject;
 
-          // Read the source to find project-related code
-          import { readFileSync } from 'fs';
-          const src = readFileSync('./turbopackager/src/packager/node/export.js', 'utf8');
-          console.log('export.js:', src);
+          console.log('Packager:', Packager);
+          console.log('loadProject:', loadProject);
+
+          const PROJECT_ID = '1201075844';
+          const targets = [
+            { type: 'windows', options: { target: 'windows', framerate: 60, interpolation: true, app: { windowMode: 'fullscreen' } } },
+            { type: 'mac',     options: { target: 'mac',     framerate: 60, interpolation: true } },
+            { type: 'linux',   options: { target: 'linux',   framerate: 60, interpolation: true, app: { windowMode: 'fullscreen' } } },
+            { type: 'html',    options: { target: 'html',    framerate: 60, interpolation: true } },
+          ];
+
+          for (const { type, options } of targets) {
+            console.log(`Packaging for ${type}...`);
+            const packager = new Packager();
+            packager.project = await loadProject(PROJECT_ID);
+            Object.assign(packager.options, options);
+            if (options.app) Object.assign(packager.options.app, options.app);
+            const result = await packager.package();
+            const ext = type === 'html' ? 'html' : 'zip';
+            const outPath = `dist/${type}.${ext}`;
+            writeFileSync(outPath, Buffer.from(result.data));
+            console.log(`Saved ${outPath}`);
+          }
           EOF
 
-      - name: Run debug
-        run: node package-project.mjs
-  
       - name: Package all targets
         run: node package-project.mjs
 
-      - name: List dist contents
-        run: ls -la dist/ || echo "dist is empty or missing"
-
       - name: Rename HTML output
-        run: mv dist/*.html online.html
+        run: mv dist/html.html online.html
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
