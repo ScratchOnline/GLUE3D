@@ -34,7 +34,11 @@ jobs:
         run: |
           cat > package-project.mjs << 'EOF'
           import { writeFileSync } from 'fs';
-          const { default: Packager } = await import('./turbopackager/dist/packager.js');
+          const pkg = await import('./turbopackager/dist/packager.js');
+          console.log('Exported keys:', Object.keys(pkg));
+          
+          const Packager = pkg.default?.Packager ?? pkg.Packager ?? pkg.default;
+          console.log('Packager:', Packager);
 
           const PROJECT_URL = 'https://turbowarp.org/1201075844';
           const targets = [
