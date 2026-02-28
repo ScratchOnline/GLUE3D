@@ -1,0 +1,70 @@
+name: TurboWarp Full Package & Release (Electron Fullscreen)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 0' # weekly (Sunday UTC)
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      # 1️⃣ Checkout repo
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2️⃣ Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 22
+
+      # 3️⃣ Install dependencies
+      - name: Install dependencies
+        run: npm install || echo "No dependencies"
+
+      # 4️⃣ Download TurboWarp Packager
+      - name: Download TurboWarp packager
+        run: |
+          curl -L https://raw.githubusercontent.com/TurboWarp/packager/refs/heads/master/src/packager/packager.js -o packager.js
+
+      # 5️⃣ Package the project for all targets
+      - name: Package project
+        run: |
+          mkdir -p dist
+          # Windows Electron fullscreen
+          node packager.js --project https://turbowarp.org/1201075844 --target windows --fps 60 --interpolation true --electron true --fullscreen true --out dist
+          # macOS Electron fullscreen
+          node packager.js --project https://turbowarp.org/1201075844 --target mac --fps 60 --interpolation true --electron true --fullscreen true --out dist
+          # Linux Electron fullscreen
+          node packager.js --project https://turbowarp.org/1201075844 --target linux --fps 60 --interpolation true --electron true --fullscreen true --out dist
+          # HTML build (plain web)
+          node packager.js --project https://turbowarp.org/1201075844 --target html --fps 60 --interpolation true --out dist
+
+      # 6️⃣ Commit HTML build to repo as online.html
+      - name: Commit HTML build
+        run: |
+          cp dist/index.html online.html
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add online.html
+          git commit -m "Update online.html from TurboWarp build" || echo "No changes to commit"
+          git push
+
+      # 7️⃣ Create GitHub release with date/time tag
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: "build-$(date +'%Y%m%d-%H%M%S')"
+          name: "Download"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 8️⃣ Upload all packaged builds to release
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v1
+        with:
+          files: "dist/**"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
