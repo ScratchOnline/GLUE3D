@@ -35,12 +35,9 @@ jobs:
           cat > package-project.mjs << 'EOF'
           import { writeFileSync } from 'fs';
           const pkg = await import('./turbopackager/dist/packager.js');
-          console.log('Exported keys:', Object.keys(pkg));
-          
           const Packager = pkg.default?.Packager ?? pkg.Packager ?? pkg.default;
-          console.log('Packager:', Packager);
 
-          const PROJECT_URL = 'https://turbowarp.org/1201075844';
+          const PROJECT_ID = '1201075844';
           const targets = [
             { type: 'windows', options: { target: 'windows', fps: 60, interpolation: true, electron: true, fullscreen: true } },
             { type: 'mac',     options: { target: 'mac',     fps: 60, interpolation: true } },
@@ -51,7 +48,7 @@ jobs:
           for (const { type, options } of targets) {
             console.log(`Packaging for ${type}...`);
             const packager = new Packager();
-            packager.project.url = PROJECT_URL;
+            await packager.loadProject(PROJECT_ID);
             Object.assign(packager.options, options);
             const result = await packager.package();
             const ext = type === 'html' ? 'html' : 'zip';
