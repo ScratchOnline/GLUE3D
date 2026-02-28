@@ -25,31 +25,34 @@ jobs:
           git clone https://github.com/TurboWarp/packager.git turbopackager
           cd turbopackager
           npm install
-          npm run build # 🔹 IMPORTANT: builds dist/packager.js
-
+      
       - name: Package Windows (Electron fullscreen)
         run: |
-          node turbopackager/dist/packager.js \
+          cd turbopackager
+          node src/packager/node.js \
             --project https://turbowarp.org/1201075844 \
-            --target windows --fps 60 --interpolation true --electron true --fullscreen true --out dist
-
+            --target windows --fps 60 --interpolation true --electron true --fullscreen true --out ../dist
+      
       - name: Package macOS (.app)
         run: |
-          node turbopackager/dist/packager.js \
+          cd turbopackager
+          node src/packager/node.js \
             --project https://turbowarp.org/1201075844 \
-            --target mac --fps 60 --interpolation true --out dist
-
+            --target mac --fps 60 --interpolation true --out ../dist
+      
       - name: Package Linux (Electron fullscreen)
         run: |
-          node turbopackager/dist/packager.js \
+          cd turbopackager
+          node src/packager/node.js \
             --project https://turbowarp.org/1201075844 \
-            --target linux --fps 60 --interpolation true --electron true --fullscreen true --out dist
-
+            --target linux --fps 60 --interpolation true --electron true --fullscreen true --out ../dist
+      
       - name: Package HTML
         run: |
-          node turbopackager/dist/packager.js \
+          cd turbopackager
+          node src/packager/node.js \
             --project https://turbowarp.org/1201075844 \
-            --target html --fps 60 --interpolation true --out dist
+            --target html --fps 60 --interpolation true --out ../dist
 
       - name: Move HTML to online.html
         run: mv dist/index.html online.html
